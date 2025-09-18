@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Slot Demo — Siap Pakai (Client-only)</title>
+  <meta name="description" content="Demo situs slot siap pakai. Hanya client-side: registrasi/login local, saldo simulasi, main slot cascading/3-reel." />
+  <style>
+    /* Minimal, modern layout */
+    :root{--bg:#071026;--card:#0d1630;--accent:#f6c85f;--muted:rgba(255,255,255,0.08);--glass: rgba(255,255,255,0.03);font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#041027 0%,#071026 60%);color:#eaf3ff}
+    .container{max-width:1100px;margin:20px auto;padding:18px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{width:54px;height:54;border-radius:10px;background:linear-gradient(135deg,#0b6cff,#7b3bff);display:flex;align-items:center;justify-content:center;font-weight:700}
+    h1{font-size:18px;margin:0}
+    .top-controls{display:flex;gap:10px;align-items:center}
+    .btn{background:linear-gradient(180deg,#16334f,#0f2540);padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);cursor:pointer;color:var(--accent);font-weight:700}
+    .btn.secondary{background:transparent;color:#cfe6ff}
+    .card{background:linear-gradient(180deg,var(--card),#051028);padding:14px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+
+    .layout{display:grid;grid-template-columns:340px 1fr;gap:18px;margin-top:18px}
+    .panel{padding:12px;border-radius:10px;background:var(--glass)}
+
+    /* Login */
+    .form{display:flex;flex-direction:column;gap:8px}
+    input,select{padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    label{font-size:13px}
+
+    /* Game area */
+    .game-wrap{display:flex;gap:14px;align-items:flex-start}
+    .reels{width:420px;padding:14px;border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);display:flex;gap:10px;justify-content:center}
+    .reel{width:110px;height:210px;background:linear-gradient(180deg,#081826,#06111f);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:8px;overflow:hidden;position:relative}
+    .strip{display:flex;flex-direction:column;gap:8px;position:absolute;top:0;left:0;right:0}
+    .symbol{height:60px;width:100%;display:flex;align-items:center;justify-content:center;font-size:34px;border-radius:6px;background:rgba(255,255,255,0.02)}
+
+    .controls{display:flex;flex-direction:column;gap:8px}
+    .stats{display:flex;gap:8px}
+    .stat{padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);min-width:110px}
+
+    .footer-note{font-size:12px;opacity:0.85;margin-top:10px}
+
+    .history{max-height:200px;overflow:auto;padding:8px;border-radius:6px;background:rgba(255,255,255,0.02)}
+
+    /* small responsiveness */
+    @media (max-width:980px){.layout{grid-template-columns:1fr}.reels{width:100%;justify-content:space-around}}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo">SS</div>
+        <div>
+          <h1>SlotSite — Demo Siap Pakai (Client-only)</h1>
+          <div style="font-size:13px;opacity:0.9">Registrasi & login lokal (localStorage). Saldo simulasi — bukan uang asli.</div>
+        </div>
+      </div>
+      <div class="top-controls">
+        <div id="userDisplay" style="text-align:right"></div>
+        <button id="downloadBtn" class="btn secondary">Download HTML</button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <!-- Left: Login / Account / History -->
+      <div>
+        <div class="card">
+          <h3 style="margin:0 0 8px 0">Akun</h3>
+          <div id="authArea" class="panel">
+            <!-- Form injected by JS -->
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="card">
+          <h3 style="margin:0 0 8px 0">Riwayat & Aktivitas</h3>
+          <div class="history" id="history"></div>
+        </div>
+      </div>
+
+      <!-- Right: Game -->
+      <div>
+        <div class="card">
+          <div class="game-wrap">
+            <div>
+              <div class="reels" id="reels">
+                <div class="reel" data-index="0"><div class="strip" id="strip0"></div></div>
+                <div class="reel" data-index="1"><div class="strip" id="strip1"></div></div>
+                <div class="reel" data-index="2"><div class="strip" id="strip2"></div></div>
+              </div>
+              <div style="margin-top:10px">
+                <div style="display:flex;gap:8px;align-items:center">
+                  <div class="stat"><small>Balance</small><div id="balance" style="font-weight:700;font-size:18px">0</div></div>
+                  <div class="stat"><small>Bet</small><div id="betDisplay" style="font-weight:700">10</div></div>
+                  <div class="stat"><small>Last Win</small><div id="lastWin" style="font-weight:700">0</div></div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+                  <input id="betInput" type="range" min="1" max="100" value="10" style="flex:1">
+                  <button id="spinBtn" class="btn">SPIN</button>
+                  <button id="autoBtn" class="btn secondary">AUTOPLAY</button>
+                </div>
+                <div class="footer-note">Demo hanya client-side. Tidak untuk perjudian uang asli.</div>
+              </div>
+            </div>
+
+            <div style="flex:1">
+              <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+                <div style="flex:1">
+                  <h3 style="margin:0">Paytable</h3>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px" id="paytable"></div>
+                </div>
+              </div>
+
+              <div style="margin-top:6px">
+                <h4 style="margin:0 0 6px 0">Control</h4>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button id="resetBtn" class="btn secondary">Reset Saldo</button>
+                  <button id="depositDemo" class="btn secondary">Isi +1000 (Demo)</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height:18px"></div>
+    <footer style="text-align:center;opacity:0.8">Built for demo & learning. For production, implement secure server-side auth, HTTPS, and anti-fraud.</footer>
+  </div>
+
+  <script>
+    // ------------------ Simple client-only auth (localStorage) ------------------
+    // WARNING: This is a demo. Do NOT use client-side auth for production.
+
+    const authArea = document.getElementById('authArea');
+    const userDisplay = document.getElementById('userDisplay');
+    const historyEl = document.getElementById('history');
+
+    function usersKey(){ return 'slot_users_v1'; }
+    function currentUserKey(){ return 'slot_current_user_v1'; }
+
+    function loadUsers(){ return JSON.parse(localStorage.getItem(usersKey())||'{}'); }
+    function saveUsers(u){ localStorage.setItem(usersKey(), JSON.stringify(u)); }
+    function setCurrentUser(name){ localStorage.setItem(currentUserKey(), name); }
+    function getCurrentUser(){ return localStorage.getItem(currentUserKey()); }
+    function clearCurrentUser(){ localStorage.removeItem(currentUserKey()); }
+
+    // simple hash (not secure) for demo only
+    function simpleHash(str){ try{ return btoa(unescape(encodeURIComponent(str))).slice(0,24); }catch(e){return str;} }
+
+    function renderAuth(){
+      const cur = getCurrentUser();
+      authArea.innerHTML='';
+      if(cur){
+        const users = loadUsers();
+        const data = users[cur];
+        const html = document.createElement('div');
+        html.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div><b>${cur}</b></div>
+            <div>Saldo: <b id="acctBalance">${data.balance}</b></div>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button id="logoutBtn" class="btn secondary">Logout</button>
+              <button id="delAcct" class="btn secondary">Hapus Akun</button>
+            </div>
+          </div>
+        `;
+        authArea.appendChild(html);
+        document.getElementById('logoutBtn').addEventListener('click', ()=>{ clearCurrentUser(); renderAuth(); updateUserDisplay(); loadHistory(); updateBalanceUI(); });
+        document.getElementById('delAcct').addEventListener('click', ()=>{ if(confirm('Hapus akun? Ini akan menghapus data lokal.')){ const u = loadUsers(); delete u[cur]; saveUsers(u); clearCurrentUser(); renderAuth(); updateUserDisplay(); loadHistory(); updateBalanceUI(); }});
+      } else {
+        const form = document.createElement('div'); form.innerHTML = `
+          <div class="form">
+            <label>Username</label>
+            <input id="u_name" placeholder="pilih username" />
+            <label>Password</label>
+            <input id="u_pass" type="password" placeholder="password demo" />
+            <div style="display:flex;gap:8px">
+              <button id="loginBtn" class="btn">Login</button>
+              <button id="registerBtn" class="btn secondary">Register</button>
+            </div>
+            <div style="font-size:12px;opacity:0.9;margin-top:6px">Catatan: Akun disimpan di penyimpanan browser (localStorage). Hanya demo.</div>
+          </div>
+        `;
+        authArea.appendChild(form);
+        document.getElementById('loginBtn').addEventListener('click', ()=>{
+          const name = document.getElementById('u_name').value.trim();
+          const pass = document.getElementById('u_pass').value || '';
+          const users = loadUsers();
+          if(!name){ alert('Masukkan username'); return; }
+          if(!users[name]){ alert('Akun tidak ditemukan'); return; }
+          if(users[name].pass !== simpleHash(pass)){ alert('Password salah'); return; }
+          setCurrentUser(name); renderAuth(); updateUserDisplay(); loadHistory(); updateBalanceUI();
+        });
+        document.getElementById('registerBtn').addEventListener('click', ()=>{
+          const name = document.getElementById('u_name').value.trim();
+          const pass = document.getElementById('u_pass').value || '';
+          if(!name){ alert('Masukkan username'); return; }
+          if(name.length<3){ alert('Username minimal 3 karakter'); return; }
+          const users = loadUsers();
+          if(users[name]){ alert('Username sudah ada'); return; }
+          users[name] = { pass: simpleHash(pass), balance: 1000, history: [] };
+          saveUsers(users); setCurrentUser(name); renderAuth(); updateUserDisplay(); loadHistory(); updateBalanceUI();
+        });
+      }
+    }
+
+    function updateUserDisplay(){ const cur = getCurrentUser(); userDisplay.innerHTML = cur ? `<div style="text-align:right">Login: <b>${cur}</b></div>` : `<div style="text-align:right">Tidak login</div>`; }
+
+    // ------------------ Game logic (3-reel slot simple) ------------------
+    const SYMBOLS = [ {id:0,icon:'🔱',name:'Trident',val:100}, {id:1,icon:'⚡️',name:'Lightning',val:80}, {id:2,icon:'💎',name:'Gem',val:60}, {id:3,icon:'🏺',name:'Urn',val:40}, {id:4,icon:'🍇',name:'Grapes',val:25}, {id:5,icon:'🪙',name:'Coin',val:15}];
+
+    const strips = [document.getElementById('strip0'), document.getElementById('strip1'), document.getElementById('strip2')];
+    const spinBtn = document.getElementById('spinBtn');
+    const autoBtn = document.getElementById('autoBtn');
+    const betInput = document.getElementById('betInput');
+    const betDisplay = document.getElementById('betDisplay');
+    const balanceEl = document.getElementById('balance');
+    const lastWinEl = document.getElementById('lastWin');
+    const paytableEl = document.getElementById('paytable');
+    const historyKeySuffix = '_history_v1';
+
+    let spinning = false; let autoplay = false;
+
+    function buildStrips(){
+      // fill each strip with repeated symbols for illusion of spinning
+      for(let i=0;i<3;i++){
+        strips[i].innerHTML = '';
+        // create long strip
+        for(let j=0;j<24;j++){
+          const s = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+          const el = document.createElement('div'); el.className='symbol'; el.textContent = s.icon; el.dataset.id = s.id; strips[i].appendChild(el);
+        }
+      }
+    }
+
+    function buildPaytable(){ paytableEl.innerHTML=''; for(const s of SYMBOLS){ const d = document.createElement('div'); d.style.background='rgba(255,255,255,0.02)'; d.style.padding='8px'; d.style.borderRadius='8px'; d.innerHTML=`<div style="font-size:20px">${s.icon}</div><div style="font-weight:700">${s.name}</div><div style="font-size:12px;opacity:0.9">3x = ${s.val}</div>`; paytableEl.appendChild(d); } }
+
+    function spinOnce(){
+      if(spinning) return; const cur = getCurrentUser(); if(!cur){ alert('Silakan login dulu'); return; }
+      const users = loadUsers(); const acct = users[cur];
+      const bet = Number(betInput.value);
+      if(acct.balance < bet){ alert('Saldo tidak cukup'); return; }
+      acct.balance -= bet; saveUsers(users); updateBalanceUI(); spinning=true; spinBtn.disabled=true; spinBtn.textContent='...';
+
+      // animation: shift each strip by random offset, stopping at different times
+      const results = [];
+      for(let i=0;i<3;i++){
+        const stopIndex = Math.floor(Math.random()*SYMBOLS.length);
+        results.push(stopIndex);
+      }
+
+      // To create a stop effect, we will animate translateY on each strip
+      const durations = [900,1300,1700];
+      for(let i=0;i<3;i++){
+        const reel = strips[i];
+        // rebuild reel so target symbol exists at position
+        // pick a random target symbol
+        const targetSymbol = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)];
+        // create a new strip with target near center
+        const newStrip = document.createElement('div'); newStrip.className='strip';
+        // fill above
+        for(let a=0;a<8;a++){ const s = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]; const el=document.createElement('div'); el.className='symbol'; el.textContent=s.icon; newStrip.appendChild(el);}        
+        // center target
+        const center = document.createElement('div'); center.className='symbol'; center.textContent = targetSymbol.icon; newStrip.appendChild(center);
+        // fill below
+        for(let b=0;b<10;b++){ const s = SYMBOLS[Math.floor(Math.random()*SYMBOLS.length)]; const el=document.createElement('div'); el.className='symbol'; el.textContent=s.icon; newStrip.appendChild(el);}        
+        // replace DOM
+        const parent = reel.parentElement; reel.replaceWith(newStrip); strips[i] = newStrip;
+        // animate
+        newStrip.style.transition = `transform ${durations[i]}ms cubic-bezier(.2,.9,.2,1)`;
+        // compute translate to place target in view (we design that center element should end at top ~ 60px)
+        const itemHeight = 68; // approx symbol + gap
+        const targetIndex = 8; // center position index
+        const translateY = -(targetIndex*itemHeight);
+        // initial offset (start higher for spinning feel)
+        newStrip.style.transform = 'translateY(0px)';
+        // trigger reflow
+        void newStrip.offsetWidth;
+        setTimeout(()=>{ newStrip.style.transform = `translateY(${translateY}px)`; }, 30 + i*120);
+      }
+
+      // after all durations finish, compute result
+      const longest = Math.max(...[900,1300,1700]);
+      setTimeout(()=>{
+        // evaluate center symbol of each strip (we know we put target at index 8)
+        const centerSymbols = strips.map(s=> s.children[8].textContent);
+        // map to SYMBOLS id
+        const ids = centerSymbols.map(ch => SYMBOLS.find(ss=>ss.icon===ch).id);
+        const win = evaluate(ids, Number(betInput.value));
+        const users2 = loadUsers(); users2[cur].balance += win; users2[cur].history = users2[cur].history || []; users2[cur].history.unshift({time: new Date().toISOString(), bet: Number(betInput.value), win, ids}); if(users2[cur].history.length>200) users2[cur].history.pop(); saveUsers(users2);
+        lastWinEl.textContent = win; updateBalanceUI(); appendHistoryRow(users2[cur].history[0]);
+        spinning=false; spinBtn.disabled=false; spinBtn.textContent='SPIN';
+        if(autoplay && users2[cur].balance >= Number(betInput.value)){ setTimeout(()=> spinOnce(), 500); } else { autoplay=false; autoBtn.textContent='AUTOPLAY'; }
+      }, longest + 120);
+    }
+
+    function evaluate(ids, bet){
+      // simple: if all three equal -> big payout; if two equal -> small; else 0
+      if(ids[0]===ids[1] && ids[1]===ids[2]){
+        const sym = SYMBOLS.find(s=>s.id===ids[0]); return sym.val * bet;
+      }
+      if(ids[0]===ids[1] || ids[1]===ids[2] || ids[0]===ids[2]){
+        // two of a kind -> small
+        return Math.floor(bet * 2);
+      }
+      return 0;
+    }
+
+    // UI helpers
+    function updateBalanceUI(){ const cur=getCurrentUser(); const users=loadUsers(); const bal = cur && users[cur] ? users[cur].balance : 0; balanceEl.textContent = bal; const acctBalanceEl = document.getElementById('acctBalance'); if(acctBalanceEl) acctBalanceEl.textContent = bal; }
+
+    function appendHistoryRow(entry){ const d=document.createElement('div'); d.style.padding='6px'; d.style.borderBottom='1px solid rgba(255,255,255,0.02)'; d.textContent = `${new Date(entry.time).toLocaleString()} — Bet ${entry.bet} — Win ${entry.win} — [${entry.ids.join(',')}]`; historyEl.prepend(d); }
+
+    function loadHistory(){ historyEl.innerHTML=''; const cur=getCurrentUser(); if(!cur) return; const users=loadUsers(); const h = users[cur].history || []; for(const e of h.slice(0,200)){ appendHistoryRow(e); } }
+
+    // controls wiring
+    spinBtn.addEventListener('click', ()=> spinOnce());
+    autoBtn.addEventListener('click', ()=>{ autoplay = !autoplay; autoBtn.textContent = autoplay ? 'AUTOPLAY ON' : 'AUTOPLAY'; if(autoplay) spinOnce(); });
+    betInput.addEventListener('input', ()=>{ betDisplay.textContent = betInput.value; });
+
+    document.getElementById('resetBtn').addEventListener('click', ()=>{ const cur=getCurrentUser(); if(!cur) { alert('Login dulu'); return; } if(!confirm('Reset saldo akun ke 1000?')) return; const users=loadUsers(); users[cur].balance = 1000; saveUsers(users); updateBalanceUI(); alert('Saldo direset'); });
+    document.getElementById('depositDemo').addEventListener('click', ()=>{ const cur=getCurrentUser(); if(!cur){ alert('Login dulu'); return; } const users = loadUsers(); users[cur].balance += 1000; saveUsers(users); updateBalanceUI(); alert(' +1000 demo ditambahkan'); });
+
+    // download
+    document.getElementById('downloadBtn').addEventListener('click', ()=>{
+      const html = '<!doctype html>' + document.documentElement.outerHTML;
+      const blob = new Blob([html], {type:'text/html'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='slot-site-ready-demo.html'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // init
+    buildStrips(); buildPaytable(); renderAuth(); updateUserDisplay(); loadHistory(); updateBalanceUI();
+
+  </script>
+</body>
+</html>
