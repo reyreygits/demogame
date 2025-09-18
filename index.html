@@ -55,4 +55,50 @@
   <script>
     const loginBox = document.getElementById("loginBox");
     const navMenu = document.getElementById("navMenu");
-    const logoutBtn = document.getElementByI
+    const logoutBtn = document.getElementById("logoutBtn");
+
+    function checkLogin() {
+      const user = localStorage.getItem("user");
+      if(user) {
+        loginBox.classList.add("hidden");
+        navMenu.classList.remove("hidden");
+      } else {
+        loginBox.classList.remove("hidden");
+        navMenu.classList.add("hidden");
+      }
+    }
+
+    function login() {
+      const u = document.getElementById("username").value;
+      const p = document.getElementById("password").value;
+      const stored = localStorage.getItem("users");
+      const users = stored ? JSON.parse(stored) : {};
+      if(users[u] && users[u] === p) {
+        localStorage.setItem("user", u);
+        checkLogin();
+        alert("Login berhasil!");
+      } else {
+        alert("Username atau password salah!");
+      }
+    }
+
+    function register() {
+      const u = document.getElementById("username").value;
+      const p = document.getElementById("password").value;
+      if(!u || !p) { alert("Isi semua kolom!"); return; }
+      let users = JSON.parse(localStorage.getItem("users") || "{}");
+      if(users[u]) { alert("Username sudah terdaftar!"); return; }
+      users[u] = p;
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("Registrasi berhasil! Silakan login.");
+    }
+
+    logoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("user");
+      checkLogin();
+    });
+
+    checkLogin();
+  </script>
+</body>
+</html>
